@@ -1,0 +1,454 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      --><title>ANALYZING WORM FILES</title><meta name="generator" content="MATLAB 7.10"><meta name="date" content="2010-04-27"><meta name="m-file" content="starter_commands_worm"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>ANALYZING WORM FILES</h1><!--introduction--><p>A Step by Step guide to using the track analysis code</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">LOADING FILES FROM DISK</a></li><li><a href="#3">CLEANING UP FILES</a></li><li><a href="#4">STITCHING TRACKS</a></li><li><a href="#5">SEGMENTING TRACKS INTO RUNS AND REORIENTATIONS</a></li><li><a href="#6">SEGMENTATION OPTIONS</a></li><li><a href="#7">SPECIFIC EXAMPLES</a></li><li><a href="#8">plot of all the tracks with the start of tracks superposed at the center</a></li><li><a href="#9">x position of the center of the mass over time</a></li><li><a href="#10">x direction drift velocity over time</a></li><li><a href="#11">scattering plot of run duration at different directions</a></li><li><a href="#12">histogram of run direction</a></li><li><a href="#13">run speed at different directions</a></li><li><a href="#14">excluding endpoints from runs</a></li><li><a href="#15">scattering plot of run direction change at different initial run direction</a></li></ul></div><pre class="codeinput"><span class="comment">% This is a starter list of things to do with worm experiment files</span>
+<span class="comment">% It was created for Linjiao, but feel free to add other commands with</span>
+<span class="comment">% documentation</span>
+</pre><h2>LOADING FILES FROM DISK<a name="2"></a></h2><p>how to load in your experiments</p><pre class="codeinput"><span class="comment">% To load experiment sets from files, use the ExperimentSet class</span>
+<span class="comment">% for information on the ExperimentSet class, type</span>
+doc <span class="string">ExperimentSet</span>
+
+<span class="comment">% To load all tracks at least 200 points long from a single file</span>
+eset = ExperimentSet.fromFiles(filename,<span class="string">'minpts'</span>, 200);
+<span class="comment">% if you do not specify a minimum length, the default is 100 points</span>
+
+<span class="comment">% To load tracks from multiple files</span>
+eset = ExperimentSet.fromFiles(filename1, filename2, filename3, <span class="string">'minpts'</span>, 200);
+
+<span class="comment">% To load tracks from all .bin files in a directory</span>
+eset = ExperimentSet.fromFiles(directoryname, <span class="string">'minpts'</span>, 200);
+
+<span class="comment">% To select tracks by hand with GUI</span>
+eset = ExperimentSet.fromFiles()
+<span class="comment">% or</span>
+eset = ExperimentSet.fromFiles(<span class="string">'minpts'</span>, 200);
+
+<span class="comment">% All the information from a single file is stored in an Experiment object</span>
+<span class="comment">% For information on experiments, type</span>
+doc <span class="string">Experiment</span>
+
+<span class="comment">% To execute the same function for all experiments in an experiment set, use</span>
+eset.executeExperimentFunction(<span class="string">'functionName'</span>, arglist);
+</pre><h2>CLEANING UP FILES<a name="3"></a></h2><p>Optional arguments to stitch together tracks, remove spurious points</p><h2>STITCHING TRACKS<a name="4"></a></h2><p>If the track extraction software missed the animal in one frame, you'll have two tracks instead of one;  here's how to stitch them back together</p><pre class="codeinput"><span class="comment">% To stitch together tracks in an experiment (to clean up missing frames)</span>
+doc <span class="string">Experiment.stitchTracks</span>
+eset.expt(j).stitchTracks(maxFrameInterval, maxDist)
+<span class="comment">% to stitch all tracks in an experiment set</span>
+eset.executeExperimentFunction(<span class="string">'stitchTracks'</span>, maxFrameInterval, maxDist);
+
+<span class="comment">% each time the program finds tracks to stitch, it will show you a graph (in</span>
+<span class="comment">% figure 1) of the two tracks, with the starting track in green, the</span>
+<span class="comment">% track to be merged onto the end in red, and any other nearby tracks in gray</span>
+<span class="comment">% in figure 2, it will play a movie of the end of track 1 followed by the</span>
+<span class="comment">% start of track 2</span>
+<span class="comment">% you will get a prompt asking stitch tracks y/n</span>
+<span class="comment">% to stitch the tracks, type 'y' and hit enter;  to leave them separate 'n'</span>
+<span class="comment">% and enter.  to see the movie again, just hit enter</span>
+
+<span class="comment">% to turn this feature off and have all track matches stitched together</span>
+<span class="comment">% automatically,</span>
+eset.expt(j).stitchTracks(maxFrameInterval, maxDist, <span class="string">'interactive'</span>, false);
+eset.executeExperimentFunction(<span class="string">'stitchTracks'</span>, maxFrameInterval, maxDist, <span class="string">'interactive'</span>, false);
+
+<span class="comment">%%% CLEANING UP BAD TRACKS</span>
+<span class="comment">% To clean up short tracks, tracks where the worm just sits there, etc.</span>
+
+<span class="comment">% for information on the ESetCleaner class</span>
+doc <span class="string">ESetCleaner</span>
+
+ecl = ESetCleaner();
+ecl.minSpeed = xx; <span class="comment">%minimum average speed of the track to be kept</span>
+ecl.minDist = xx; <span class="comment">%minimum distance must travel from the starting point to be kept</span>
+ecl.minPts = xx; <span class="comment">%minimum number of points to be kept</span>
+
+<span class="comment">% generate graphs showing the distributions of speed, dist, and pts and</span>
+<span class="comment">% which would be cut</span>
+ecl.getReport (eset);
+
+<span class="comment">% actually do the trimming (will show you report and ask if you want to</span>
+<span class="comment">% proceed)</span>
+ecl.clean(eset);
+
+<span class="comment">%%% REMOVING EXCESS TRACK</span>
+<span class="comment">% To get rid of portions of track that leave a certain area (e.g. to ignore</span>
+<span class="comment">% worms that reach the edge &amp; then return), see help file:</span>
+doc <span class="string">Experiment.trimTracks</span>
+
+<span class="comment">% To remove tracks that start outside a valid time or space range, see help</span>
+<span class="comment">% file:</span>
+doc <span class="string">Experiment.pruneTracks</span>
+
+<span class="comment">% To execute the trim or prune on all experiments in the experiment set</span>
+<span class="comment">% using the same parameters</span>
+eset.executeExperimentFunction(<span class="string">'trimTracks'</span>, timerange, validrect)
+eset.executeExperimentFunction (<span class="string">'pruneTracks'</span>, starttimerange, startrect)
+</pre><h2>SEGMENTING TRACKS INTO RUNS AND REORIENTATIONS<a name="5"></a></h2><p>how to parse the track into periods of runs and reorientation</p><h2>SEGMENTATION OPTIONS<a name="6"></a></h2><p>These set the rules for segmenting tracks</p><pre class="codeinput"><span class="comment">% from the help information:</span>
+doc <span class="string">WormSegmentationOptions</span>
+
+<span class="comment">% first sharp turns are flagged as any point at which the velocity</span>
+<span class="comment">% direction is changing faster than DTHETATHRESH</span>
+<span class="comment">% any sharp turns that are less than JOINSTPTS apart are merged into a</span>
+<span class="comment">% single sharp turn</span>
+<span class="comment">% the velocity angle into a sharp turn is the angle PTBUFFER points before</span>
+<span class="comment">% the turn; and the velocity angle out is PTBUFFER points after</span>
+<span class="comment">% if the in and out velocity angles are within ALIGNEDTHETA, the sharp</span>
+<span class="comment">% turn is flagged as a reversal (if out is ~180 degrees from in) or a</span>
+<span class="comment">% blip (if in the same direction)</span>
+<span class="comment">% otherwise, flagged as an omega turn</span>
+<span class="comment">% all sharp turns within MINRUNTIME (in seconds) of each other are</span>
+<span class="comment">% grouped into a single reorientation</span>
+<span class="comment">% a reorientation ends at the point where dtheta/dt is less than</span>
+<span class="comment">% STRAIGHTTHETATHRESH after the last sharp turn in that reorientation</span>
+
+<span class="comment">%%% SEGMENTING TRACKS</span>
+<span class="comment">% Doing the segmentation</span>
+
+<span class="comment">% to use the same set of rules for all tracks</span>
+eset.expt(j).segmentTracks(worm_segment_options)
+<span class="comment">% or</span>
+eset.executeExperimentFunction(<span class="string">'segmentTracks'</span>, worm_segment_options);
+
+<span class="comment">% to use each a different segment option for each track, modify the track's</span>
+<span class="comment">% segment options individually,</span>
+eset.expt(j).track(k).so = new_segment_options;
+<span class="comment">% then</span>
+eset.expt(j).segmentTracks()
+<span class="comment">% or</span>
+eset.executeExperimentFunction(<span class="string">'segmentTracks'</span>);
+</pre><h2>SPECIFIC EXAMPLES<a name="7"></a></h2><p>These are commands to do specific things Linjiao requested</p><h2>plot of all the tracks with the start of tracks superposed at the center<a name="8"></a></h2><p>use the 'displacement' field</p><pre class="codeinput"><span class="comment">% two possibilities:</span>
+<span class="comment">% method 1:</span>
+figure(fignum); clf(fignum);  <span class="comment">%create a figure and clear it</span>
+hold <span class="string">on</span>;
+eset.executeTrackFunction(<span class="string">'plotPath'</span>, <span class="string">'displacement'</span>); <span class="comment">% plot all paths</span>
+plot (0,0, <span class="string">'r.'</span>, <span class="string">'MarkerSize'</span>, 20); <span class="comment">% put a red dot at 0,0</span>
+hold <span class="string">off</span>;
+
+<span class="comment">% method 2:</span>
+figure(fignum); clf(fignum);  <span class="comment">%create a figure and clear it</span>
+alltracks = [eset.expt.track]; <span class="comment">%get the handles for all tracks in one vector</span>
+alltracks.plotPath(<span class="string">'displacement'</span>); <span class="comment">% plot all paths</span>
+hold <span class="string">on</span>
+plot (0,0, <span class="string">'r.'</span>, <span class="string">'MarkerSize'</span>, 20); <span class="comment">% put a red dot at 0,0</span>
+hold <span class="string">off</span>
+</pre><h2>x position of the center of the mass over time<a name="9"></a></h2><p>use the 'sloc' (smoothed location) field, then subtract off start point</p><pre class="codeinput">timeAxis = firstTime:DT:lastTime; <span class="comment">% in seconds</span>
+[time, centerofmass] = eset.meanField2vsField1(<span class="string">'eti'</span>, <span class="string">'sloc'</span>, timeAxis);
+xposition = centerofmass(1,:);
+plot (time, xposition - xposition(1,1));
+</pre><h2>x direction drift velocity over time<a name="10"></a></h2><p>this is just the derivative of the center of mass over time</p><pre class="codeinput"><span class="comment">% run previous commands to find center of mass, then</span>
+sigma = 1; <span class="comment">%amount of smoothing</span>
+xcomvel = deriv(xposition)./deriv(time);
+plot (time, xcomvel);
+</pre><h2>scattering plot of run duration at different directions<a name="11"></a></h2><p>get the two fields you're interested in and plot them against each other</p><pre class="codeinput">rundirection = eset.gatherSubField(<span class="string">'run'</span>, <span class="string">'meanTheta'</span>);
+runduration = eset.gatherSubField(<span class="string">'run'</span>, <span class="string">'runTime'</span>);
+plot (rad2deg(rundirection), runduration);
+</pre><h2>histogram of run direction<a name="12"></a></h2><p>use the makeSubFieldHistogram command</p><pre class="codeinput"><span class="comment">% generate a theta axis; although run angles run between -pi and pi</span>
+<span class="comment">% radians, using the 'polar' option below shifts them to between 0 and 2 pi</span>
+thetaAxis = deg2rad(0:30:330);
+eset.makeSubFieldHistogram(<span class="string">'run'</span>, <span class="string">'meanTheta'</span>, thetaAxis, <span class="string">'polar'</span>, true, <span class="string">'r2d'</span>, true);
+</pre><h2>run speed at different directions<a name="13"></a></h2><p>use the meanField2vsField1 commanda again</p><pre class="codeinput"><span class="comment">% here we need the theta axis to run between -pi and pi</span>
+thetaAxis = deg2rad(-180:30:180);
+[newtheta, meanspeed] = eset.meanField2vsField1(<span class="string">'theta'</span>, <span class="string">'speed'</span>, thetaAxis, <span class="string">'run'</span>);
+plot (rad2deg(newtheta), meanspeed);
+</pre><h2>excluding endpoints from runs<a name="14"></a></h2><pre class="codeinput">thetaAxis = deg2rad(-180:30:180);
+<span class="comment">%to exclude first 5 and last 5 pts from run</span>
+runtheta = eset.gatherFromSubField(<span class="string">'run'</span>, <span class="string">'theta'</span>, <span class="string">'trimpts'</span>, 5);
+runspeed = eset.gatherFromSubField(<span class="string">'run'</span>, <span class="string">'speed'</span>, <span class="string">'trimpts'</span>, 5);
+[newtheta, meanspeed, stderrorspeed] = meanyvsx(runtheta, runspeed, thetaAxis);
+errorbar(rad2deg(newtheta), meanspeed, stderrorspeed);
+</pre><h2>scattering plot of run direction change at different initial run direction<a name="15"></a></h2><p>gather the start and end directions then process</p><pre class="codeinput">runstart = eset.gatherSubField(<span class="string">'run'</span>, <span class="string">'startTheta'</span>);
+runend = eset.gatherSubField(<span class="string">'run'</span>, <span class="string">'endTheta'</span>);
+rundt = diff(unwrap([runstart;runend])); <span class="comment">% this takes care of 2 pi discontinuities</span>
+
+<span class="comment">% group into quadrants</span>
+startedRight = abs(runstart) &lt; pi / 4;  <span class="comment">% etc.</span>
+
+<span class="comment">% make histograms by quadrant</span>
+dthetaAxis = deg2rad(-180:15:180);
+plot (rad2deg(dthetaAxis), hist(rundt(startedRight), dthetaAxis)); <span class="comment">% etc.</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.10<br></p></div><!--
+##### SOURCE BEGIN #####
+%% ANALYZING WORM FILES
+% A Step by Step guide to using the track analysis code
+%%
+
+% This is a starter list of things to do with worm experiment files
+% It was created for Linjiao, but feel free to add other commands with 
+% documentation
+
+%% LOADING FILES FROM DISK
+% how to load in your experiments
+
+% To load experiment sets from files, use the ExperimentSet class
+% for information on the ExperimentSet class, type
+doc ExperimentSet
+
+% To load all tracks at least 200 points long from a single file
+eset = ExperimentSet.fromFiles(filename,'minpts', 200);
+% if you do not specify a minimum length, the default is 100 points
+
+% To load tracks from multiple files
+eset = ExperimentSet.fromFiles(filename1, filename2, filename3, 'minpts', 200);
+
+% To load tracks from all .bin files in a directory
+eset = ExperimentSet.fromFiles(directoryname, 'minpts', 200);
+
+% To select tracks by hand with GUI
+eset = ExperimentSet.fromFiles()
+% or
+eset = ExperimentSet.fromFiles('minpts', 200);
+
+% All the information from a single file is stored in an Experiment object
+% For information on experiments, type
+doc Experiment
+
+% To execute the same function for all experiments in an experiment set, use
+eset.executeExperimentFunction('functionName', arglist);
+
+%% CLEANING UP FILES
+% Optional arguments to stitch together tracks, remove spurious points
+
+%%% STITCHING TRACKS
+% If the track extraction software missed the animal in one frame, you'll
+% have two tracks instead of one;  here's how to stitch them back together
+
+% To stitch together tracks in an experiment (to clean up missing frames)
+doc Experiment.stitchTracks
+eset.expt(j).stitchTracks(maxFrameInterval, maxDist)
+% to stitch all tracks in an experiment set
+eset.executeExperimentFunction('stitchTracks', maxFrameInterval, maxDist);
+
+% each time the program finds tracks to stitch, it will show you a graph (in
+% figure 1) of the two tracks, with the starting track in green, the
+% track to be merged onto the end in red, and any other nearby tracks in gray
+% in figure 2, it will play a movie of the end of track 1 followed by the
+% start of track 2
+% you will get a prompt asking stitch tracks y/n
+% to stitch the tracks, type 'y' and hit enter;  to leave them separate 'n'
+% and enter.  to see the movie again, just hit enter
+
+% to turn this feature off and have all track matches stitched together
+% automatically, 
+eset.expt(j).stitchTracks(maxFrameInterval, maxDist, 'interactive', false);
+eset.executeExperimentFunction('stitchTracks', maxFrameInterval, maxDist, 'interactive', false);
+
+%%% CLEANING UP BAD TRACKS
+% To clean up short tracks, tracks where the worm just sits there, etc.
+
+% for information on the ESetCleaner class
+doc ESetCleaner
+
+ecl = ESetCleaner();
+ecl.minSpeed = xx; %minimum average speed of the track to be kept
+ecl.minDist = xx; %minimum distance must travel from the starting point to be kept
+ecl.minPts = xx; %minimum number of points to be kept
+
+% generate graphs showing the distributions of speed, dist, and pts and
+% which would be cut
+ecl.getReport (eset);
+
+% actually do the trimming (will show you report and ask if you want to
+% proceed)
+ecl.clean(eset);
+
+%%% REMOVING EXCESS TRACK
+% To get rid of portions of track that leave a certain area (e.g. to ignore
+% worms that reach the edge & then return), see help file:
+doc Experiment.trimTracks
+
+% To remove tracks that start outside a valid time or space range, see help
+% file:
+doc Experiment.pruneTracks
+
+% To execute the trim or prune on all experiments in the experiment set
+% using the same parameters
+eset.executeExperimentFunction('trimTracks', timerange, validrect)
+eset.executeExperimentFunction ('pruneTracks', starttimerange, startrect)
+ 
+%% SEGMENTING TRACKS INTO RUNS AND REORIENTATIONS
+% how to parse the track into periods of runs and reorientation
+
+%%% SEGMENTATION OPTIONS
+% These set the rules for segmenting tracks
+
+% from the help information:
+doc WormSegmentationOptions
+
+% first sharp turns are flagged as any point at which the velocity
+% direction is changing faster than DTHETATHRESH
+% any sharp turns that are less than JOINSTPTS apart are merged into a
+% single sharp turn
+% the velocity angle into a sharp turn is the angle PTBUFFER points before
+% the turn; and the velocity angle out is PTBUFFER points after
+% if the in and out velocity angles are within ALIGNEDTHETA, the sharp
+% turn is flagged as a reversal (if out is ~180 degrees from in) or a
+% blip (if in the same direction)
+% otherwise, flagged as an omega turn
+% all sharp turns within MINRUNTIME (in seconds) of each other are
+% grouped into a single reorientation
+% a reorientation ends at the point where dtheta/dt is less than
+% STRAIGHTTHETATHRESH after the last sharp turn in that reorientation
+ 
+%%% SEGMENTING TRACKS
+% Doing the segmentation
+
+% to use the same set of rules for all tracks
+eset.expt(j).segmentTracks(worm_segment_options)
+% or
+eset.executeExperimentFunction('segmentTracks', worm_segment_options);
+
+% to use each a different segment option for each track, modify the track's
+% segment options individually,
+eset.expt(j).track(k).so = new_segment_options;
+% then
+eset.expt(j).segmentTracks()
+% or
+eset.executeExperimentFunction('segmentTracks');
+
+%% SPECIFIC EXAMPLES
+% These are commands to do specific things Linjiao requested
+
+%% plot of all the tracks with the start of tracks superposed at the center
+% use the 'displacement' field
+
+% two possibilities:
+% method 1:
+figure(fignum); clf(fignum);  %create a figure and clear it
+hold on;  
+eset.executeTrackFunction('plotPath', 'displacement'); % plot all paths
+plot (0,0, 'r.', 'MarkerSize', 20); % put a red dot at 0,0
+hold off;
+
+% method 2:
+figure(fignum); clf(fignum);  %create a figure and clear it
+alltracks = [eset.expt.track]; %get the handles for all tracks in one vector
+alltracks.plotPath('displacement'); % plot all paths
+hold on
+plot (0,0, 'r.', 'MarkerSize', 20); % put a red dot at 0,0
+hold off
+
+%% x position of the center of the mass over time
+% use the 'sloc' (smoothed location) field, then subtract off start point
+
+timeAxis = firstTime:DT:lastTime; % in seconds
+[time, centerofmass] = eset.meanField2vsField1('eti', 'sloc', timeAxis);
+xposition = centerofmass(1,:);
+plot (time, xposition - xposition(1,1));
+
+%% x direction drift velocity over time
+% this is just the derivative of the center of mass over time
+
+% run previous commands to find center of mass, then
+sigma = 1; %amount of smoothing
+xcomvel = deriv(xposition)./deriv(time);
+plot (time, xcomvel);
+
+%% scattering plot of run duration at different directions
+% get the two fields you're interested in and plot them against each other
+
+rundirection = eset.gatherSubField('run', 'meanTheta');
+runduration = eset.gatherSubField('run', 'runTime');
+plot (rad2deg(rundirection), runduration);
+
+%% histogram of run direction
+% use the makeSubFieldHistogram command
+
+% generate a theta axis; although run angles run between -pi and pi
+% radians, using the 'polar' option below shifts them to between 0 and 2 pi
+thetaAxis = deg2rad(0:30:330);
+eset.makeSubFieldHistogram('run', 'meanTheta', thetaAxis, 'polar', true, 'r2d', true);
+
+
+%% run speed at different directions
+% use the meanField2vsField1 commanda again
+
+% here we need the theta axis to run between -pi and pi
+thetaAxis = deg2rad(-180:30:180);
+[newtheta, meanspeed] = eset.meanField2vsField1('theta', 'speed', thetaAxis, 'run');
+plot (rad2deg(newtheta), meanspeed);
+
+%% excluding endpoints from runs
+thetaAxis = deg2rad(-180:30:180);
+%to exclude first 5 and last 5 pts from run
+runtheta = eset.gatherFromSubField('run', 'theta', 'trimpts', 5);
+runspeed = eset.gatherFromSubField('run', 'speed', 'trimpts', 5);
+[newtheta, meanspeed, stderrorspeed] = meanyvsx(runtheta, runspeed, thetaAxis);
+errorbar(rad2deg(newtheta), meanspeed, stderrorspeed);
+
+
+%% scattering plot of run direction change at different initial run direction
+% gather the start and end directions then process
+
+runstart = eset.gatherSubField('run', 'startTheta');
+runend = eset.gatherSubField('run', 'endTheta');
+rundt = diff(unwrap([runstart;runend])); % this takes care of 2 pi discontinuities
+
+% group into quadrants
+startedRight = abs(runstart) < pi / 4;  % etc.
+
+% make histograms by quadrant
+dthetaAxis = deg2rad(-180:15:180);
+plot (rad2deg(dthetaAxis), hist(rundt(startedRight), dthetaAxis)); % etc.
+
+##### SOURCE END #####
+--></body></html>
